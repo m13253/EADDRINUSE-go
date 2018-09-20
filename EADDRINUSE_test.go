@@ -37,6 +37,38 @@ import (
 	EADDRINUSE "github.com/m13253/EADDRINUSE-go"
 )
 
+func Example() {
+	l1, addr1, err := listenOnNextAddr("127.0.0.1:10000")
+	if err != nil {
+		panic(err)
+	}
+	defer l1.Close()
+	l2, addr2, err := listenOnNextAddr("[::1]:10000")
+	if err != nil {
+		panic(err)
+	}
+	defer l2.Close()
+	l3, addr3, err := listenOnNextAddr("127.0.0.1:10000")
+	if err != nil {
+		panic(err)
+	}
+	defer l3.Close()
+	l4, addr4, err := listenOnNextAddr("[::1]:10000")
+	if err != nil {
+		panic(err)
+	}
+	defer l4.Close()
+	fmt.Println(addr1)
+	fmt.Println(addr2)
+	fmt.Println(addr3)
+	fmt.Println(addr4)
+	// Output:
+	// 127.0.0.1:10000
+	// [::1]:10000
+	// 127.0.0.1:10001
+	// [::1]:10001
+}
+
 func listenOnNextAddr(addr string) (net.Listener, *net.TCPAddr, error) {
 	originalAddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
@@ -50,7 +82,7 @@ func listenOnNextAddr(addr string) (net.Listener, *net.TCPAddr, error) {
 	for availableAddr.Port = originalAddr.Port; availableAddr.Port < 65535 && availableAddr.Port-originalAddr.Port < 10; availableAddr.Port++ {
 		l, err = net.ListenTCP("tcp", availableAddr)
 		if err != nil {
-			if Tell(err) {
+			if EADDRINUSE.Tell(err) {
 				continue
 			} else {
 				return nil, nil, err
@@ -59,19 +91,4 @@ func listenOnNextAddr(addr string) (net.Listener, *net.TCPAddr, error) {
 		return l, availableAddr, nil
 	}
 	return nil, nil, err
-}
-
-func ExampleTell() {
-	l1, addr1, err := listenOnNextAddr("localhost:10000")
-	if err != nil {
-		panic(err)
-	}
-	defer l1.Close()
-	l2, addr2, err := listenOnNextAddr("localhost:10000")
-	if err != nil {
-		panic(err)
-	}
-	defer l2.Close()
-	fmt.Println(addr1)
-	fmt.Println(addr2)
 }
