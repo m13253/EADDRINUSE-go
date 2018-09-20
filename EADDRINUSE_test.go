@@ -28,34 +28,50 @@
   For more information, please refer to <http://unlicense.org>
 */
 
-package EADDRINUSE
+package EADDRINUSE_test
 
 import (
+	"fmt"
 	"net"
-	"os"
-	"runtime"
-	"syscall"
+
+	EADDRINUSE "github.com/m13253/EADDRINUSE-go"
 )
 
-func Tell(err error) bool {
-	errOpError, ok := err.(*net.OpError)
-	if !ok {
-		return false
+func listenOnNextAddr(addr string) (net.Listener, *net.TCPAddr, error) {
+	originalAddr, err := net.ResolveTCPAddr("tcp", addr)
+	if err != nil {
+		return nil, nil, err
 	}
-	errSyscallError, ok := errOpError.Err.(*os.SyscallError)
-	if !ok {
-		return false
+
+	var l net.Listener
+	availableAddr := new(net.TCPAddr)
+	*availableAddr = *originalAddr
+
+	for availableAddr.Port = originalAddr.Port; availableAddr.Port < 65535 && availableAddr.Port-originalAddr.Port < 10; availableAddr.Port++ {
+		l, err = net.ListenTCP("tcp", availableAddr)
+		if err != nil {
+			if Tell(err) {
+				continue
+			} else {
+				return nil, nil, err
+			}
+		}
+		return l, availableAddr, nil
 	}
-	errErrno, ok := errSyscallError.Err.(syscall.Errno)
-	if !ok {
-		return false
+	return nil, nil, err
+}
+
+func ExampleTell() {
+	l1, addr1, err := listenOnNextAddr("localhost:10000")
+	if err != nil {
+		panic(err)
 	}
-	if errErrno == syscall.EADDRINUSE {
-		return true
+	defer l1.Close()
+	l2, addr2, err := listenOnNextAddr("localhost:10000")
+	if err != nil {
+		panic(err)
 	}
-	const WSAEADDRINUSE = 10048
-	if runtime.GOOS == "windows" && errErrno == WSAEADDRINUSE {
-		return true
-	}
-	return false
+	defer l2.Close()
+	fmt.Println(addr1)
+	fmt.Println(addr2)
 }
